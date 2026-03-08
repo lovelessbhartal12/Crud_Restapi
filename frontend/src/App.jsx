@@ -5,7 +5,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
 
-const BASE_URL = "http://127.0.0.1:8000/api/grocery";
+const BASE_URL = "https://crud-restapi-2.onrender.com/api/grocery";
 
 const App = () => {
   const [items, setItems] = useState([]);
