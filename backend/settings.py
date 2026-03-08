@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-=7fnyrn0o=xu@86ur4h!zb951#&$%th@wd2h%3pd^7$spyovm$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'crud-restapi-2.onrender.com',
+    'localhost',
+    '127.0.0.1'
+]
 
 
 # Application definition
