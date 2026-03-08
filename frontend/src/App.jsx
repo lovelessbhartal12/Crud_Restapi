@@ -1,28 +1,14 @@
 import Items from "./components/Items";
-// import { groceryItems } from "./data/groceryItems";
 import { useState, useEffect, useRef } from "react";
-import { nanoid } from "nanoid";
 import Form from "./components/Form";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
 
-const getLocalStorage = () => {
-  let list = localStorage.getItem("grocery-list");
-  if (list) {
-    return JSON.parse(list);
-  }
-  return [];
-};
-
-const setLocalStorage = (items) => {
-  localStorage.setItem("grocery-list", JSON.stringify(items));
-};
-
-const initialList = getLocalStorage();
+const BASE_URL = "http://127.0.0.1:8000/api/grocery";
 
 const App = () => {
-  const [items, setItems] = useState(initialList);
+  const [items, setItems] = useState([]);
   const [editId, setEditId] = useState(null);
   const inputRef = useRef(null);
 
@@ -32,52 +18,126 @@ const App = () => {
     }
   }, [editId]);
 
-  const editCompleted = (itemId) => {
-    const newItems = items.map((item) => {
-      if (item.id === itemId) {
-        return { ...item, completed: !item.completed };
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/`);
+        if (!res.ok) throw new Error("Failed to fetch items");
+
+        const data = await res.json();
+        setItems(data);
+      } catch (err) {
+        toast.error("Could not load grocery list");
       }
-      return item;
-    });
-    setLocalStorage(newItems);
-    setItems(newItems);
-  };
-
-  const removeItem = (itemId) => {
-    const newItems = items.filter((item) => item.id !== itemId);
-    setItems(newItems);
-    setLocalStorage(newItems);
-    toast.success("item deleted");
-  };
-
-  const addItem = (itemName) => {
-    const newItem = {
-      name: itemName,
-      completed: false,
-      id: nanoid(),
     };
-    const newItems = [...items, newItem];
-    setItems(newItems);
-    setLocalStorage(newItems);
-    toast.success("grocery item added");
+
+    fetchItems();
+  }, []);
+
+  const addItem = async (itemName) => {
+    try {
+      const res = await fetch(`${BASE_URL}/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: itemName,
+          completed: false,
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+
+      const newItem = await res.json();
+
+      setItems((prev) => [...prev, newItem.data || newItem]);
+
+      toast.success("Grocery item added");
+    } catch (err) {
+      toast.error("Error adding item");
+    }
   };
 
-  const updateItemName = (newName) => {
-    const newItems = items.map((item) => {
-      if (item.id === editId) {
-        return { ...item, name: newName };
-      }
-      return item;
-    });
-    setItems(newItems);
-    setEditId(null);
-    setLocalStorage(newItems);
-    toast.success("item updated");
+  const editCompleted = async (itemId) => {
+    try {
+      const item = items.find((i) => i.id === itemId);
+
+      const res = await fetch(`${BASE_URL}/${itemId}/`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...item,
+          completed: !item.completed,
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+
+      const updated = await res.json();
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId ? updated.data || updated : item,
+        ),
+      );
+    } catch {
+      toast.error("Update failed");
+    }
+  };
+
+  const updateItemName = async (newName) => {
+    try {
+      const item = items.find((i) => i.id === editId);
+
+      const res = await fetch(`${BASE_URL}/${editId}/`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...item,
+          name: newName,
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+
+      const updated = await res.json();
+
+      setItems((prev) =>
+        prev.map((i) => (i.id === editId ? updated.data || updated : i)),
+      );
+
+      setEditId(null);
+      toast.success("Item updated");
+    } catch {
+      toast.error("Update failed");
+    }
+  };
+
+  const removeItem = async (itemId) => {
+    try {
+      const res = await fetch(`${BASE_URL}/${itemId}/`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error();
+
+      setItems((prev) => prev.filter((item) => item.id !== itemId));
+
+      toast.success("Item deleted");
+    } catch {
+      toast.error("Delete failed");
+    }
   };
 
   return (
     <section className="section-center">
       <ToastContainer position="top-center" />
+
       <Form
         addItem={addItem}
         updateItemName={updateItemName}
@@ -85,6 +145,7 @@ const App = () => {
         itemToEdit={items.find((item) => item.id === editId)}
         inputRef={inputRef}
       />
+
       <Items
         items={items}
         editCompleted={editCompleted}
